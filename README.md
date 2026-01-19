@@ -1,7 +1,7 @@
 ### proof of concept for octojoin
 
 ```
-cd /home/test/Documents/poc/bitcoin-rpc-proxy
+cd bitcoin-rpc-proxy
 node server.js
 ```
 
