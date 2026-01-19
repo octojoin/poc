@@ -1,321 +1,876 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Octojoin</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #1a1a1a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000000;
             color: #ffffff;
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
             min-height: 100vh;
         }
+
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 20px;
-            flex: 1;
         }
+
         h1 {
             text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4aa, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #111111;
+            border: 1px solid #222222;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #00d4aa;
+            font-size: 1.3rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
         button {
             border: none;
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             text-align: center;
             text-decoration: none;
             display: inline-block;
-            font-size: 16px;
+            font-size: 14px;
             margin: 4px 2px;
             cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 600;
         }
-        #fetchUTXOsBtn {
-            background-color: #06402B;
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
-        #otherUTXOsBtn {
-            background-color: red; /* Red color for Other UTXOs button */
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
-        #openSettingsBtn {
-            background-color: #3498db;
+
+        .btn-primary {
+            background: linear-gradient(135deg, #006b55 0%, #004d3d 100%);
         }
-        #createPSBTBtn {
-    background-color: #DAA520; /* Dark yellow for PSBT button */
-    color: #ffffff;
-    font-weight: bold;
-}
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #7b2cbf 0%, #5a1d8f 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #8B6914 0%, #6B5010 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #1a7a42 0%, #145c32 100%);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            margin-bottom: 4px;
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        .utxo-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .utxo-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .utxo-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .utxo-item input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .utxo-details {
+            flex: 1;
+            font-size: 13px;
+        }
+
+        .utxo-details .txid {
+            font-family: monospace;
+            color: #00d4aa;
+            word-break: break-all;
+        }
+
+        .utxo-details .amount {
+            color: #DAA520;
+            font-weight: 600;
+        }
+
+        .utxo-details .label {
+            display: inline-block;
+            background: #7b2cbf;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
         .modal {
             display: none;
             position: fixed;
-            z-index: 1;
+            z-index: 100;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
             overflow: auto;
-            background-color: rgba(0,0,0,0.4);
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
         }
+
         .modal-content {
-            background-color: #2a2a2a;
-            margin: 15% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 500px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            margin: 5% auto;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
         }
+
         .close {
             color: #aaa;
             float: right;
             font-size: 28px;
             font-weight: bold;
-        }
-        .close:hover,
-        .close:focus {
-            color: #ffffff;
-            text-decoration: none;
             cursor: pointer;
         }
-        input {
-            width: 100%;
-            padding: 12px 20px;
-            margin: 8px 0;
-            display: inline-block;
-            border: 1px solid #ccc;
-            box-sizing: border-box;
-            background-color: #3a3a3a;
-            color: #ffffff;
+
+        .close:hover {
+            color: #fff;
         }
-        #utxoList {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            background-color: #2a2a2a;
-            display: none; /* Hide the div by default */
-        }
-        #utxoList:not(:empty) {
-            display: block; /* Show the div when it has content */
-        }
+
         footer {
-            background-color: #2a2a2a;
-            padding: 10px 0;
             text-align: center;
+            padding: 20px;
+            margin-top: 20px;
         }
-        #saveBtn {
-            background-color: #e74c3c;
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
             color: white;
+            font-weight: 600;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .preview-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 15px;
+        }
+
+        .preview-section h3 {
+            margin-top: 0;
+            color: #00d4aa;
+            font-size: 1rem;
+        }
+
+        .preview-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .preview-row:last-child {
+            border-bottom: none;
+        }
+
+        .preview-label {
+            color: #888;
+        }
+
+        .preview-value {
+            color: #fff;
+            font-family: monospace;
+        }
+
+        .preview-value.highlight {
+            color: #DAA520;
+        }
+
+        .psbt-display {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 15px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .inline-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .inline-input input {
+            flex: 1;
+        }
+
+        .inline-input button {
+            margin: 0;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.pending {
+            background: #DAA520;
+        }
+
+        .status-badge.complete {
+            background: #27ae60;
+        }
+
+        .status-badge.error {
+            background: #e74c3c;
+        }
+
+        .denomination-tag {
+            display: inline-block;
+            background: rgba(0, 212, 170, 0.2);
+            border: 1px solid #00d4aa;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin: 2px;
+            font-family: monospace;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>Octojoin</h1>
-        <button id="fetchUTXOsBtn">Swapped UTXOs</button>
-        <button id="otherUTXOsBtn">Other UTXOs</button>
-        <div id="utxoList"></div>
+        <h1>🐙 Octojoin</h1>
 
-        <!-- New Section for PSBT Creation -->
-        <div id="psbtForm">
-            <h2>Create PSBT</h2>
-            <label for="paymentAmount">Payment Amount (BTC):</label>
-            <input type="float" step="0.00000001" id="paymentAmount" name="paymentAmount" required>
+        <div class="card">
+            <div class="button-row">
+                <button class="btn-primary" id="fetchSwappedBtn">Swapped UTXOs</button>
+                <button class="btn-secondary" id="fetchOtherBtn">Other UTXOs</button>
+            </div>
+            <div id="utxoList" class="utxo-list"></div>
+            <div id="utxoActions" class="button-row" style="display: none;">
+                <button class="btn-warning btn-small" id="labelSelectedBtn">Label as 'octojoin'</button>
+            </div>
+        </div>
 
-            <label for="numInputs">Number of Inputs:</label>
-            <input type="number" id="numInputs" name="numInputs" value="3" required>
+        <div class="card">
 
-            <label for="numOutputs">Number of Outputs:</label>
-            <input type="number" id="numOutputs" name="numOutputs" value="2" required>
+            <label for="paymentAmount">Payment Amount (BTC)</label>
+            <input type="number" step="0.00000001" id="paymentAmount" placeholder="0.001">
 
-            <label for="bitcoinAddresses">Bitcoin Addresses (comma-separated):</label>
-            <input type="text" id="bitcoinAddresses" name="bitcoinAddresses" required>
+            <div class="inline-input">
+                <div style="flex: 1;">
+                    <label for="feeRate">Fee Rate (sat/vB)</label>
+                    <input type="number" step="0.1" id="feeRate" value="1.0" placeholder="1.0">
+                </div>
+                <button class="btn-info btn-small" id="fetchFeeBtn" style="margin-top: 30px;">Get Current Rate</button>
+            </div>
 
-            <button type="button" id="createPSBTBtn">Create PSBT</button>
+            <div style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label for="numInputs">Number of Inputs (min 3)</label>
+                    <input type="number" id="numInputs" value="3" min="3">
+                </div>
+                <div style="flex: 1;">
+                    <label for="numOutputs">Number of Outputs (min 2)</label>
+                    <input type="number" id="numOutputs" value="2" min="2">
+                </div>
+            </div>
+
+            <label for="bitcoinAddresses">Output Addresses (comma-separated)</label>
+            <input type="text" id="bitcoinAddresses" placeholder="bc1q..., bc1q...">
+
+            <div class="button-row">
+                <button class="btn-warning" id="createPSBTBtn">Create PSBT</button>
+            </div>
+        </div>
+
+        <div class="card" id="previewCard" style="display: none;">
+            <div id="txPreview"></div>
+            <div class="button-row">
+                <button class="btn-success" id="signPSBTBtn">Sign PSBT</button>
+                <button class="btn-primary" id="broadcastBtn" disabled>Broadcast Transaction</button>
+            </div>
+            <div id="psbtContainer" style="display: none;">
+                <h3 style="color: #888; margin-top: 20px;">PSBT Data</h3>
+                <div id="psbtDisplay" class="psbt-display"></div>
+            </div>
+        </div>
+
+        <div class="card" id="resultCard" style="display: none;">
+            <h2>✅ Transaction Result</h2>
+            <div id="txResult"></div>
         </div>
     </div>
 
     <footer>
-        <button id="openSettingsBtn">Settings</button>
+        <button class="btn-info" id="openSettingsBtn">⚙️ Settings</button>
     </footer>
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>Settings</h2>
+            <h2>⚙️ Bitcoin Core Settings</h2>
             <form id="settingsForm">
-                <label for="rpcUrl">RPC URL:</label>
-                <input type="text" id="rpcUrl" name="rpcUrl" required>
-                <label for="rpcUsername">RPC Username:</label>
-                <input type="text" id="rpcUsername" name="rpcUsername" required>
-                <label for="rpcPassword">RPC Password:</label>
-                <input type="password" id="rpcPassword" name="rpcPassword" required>
-                <button type="button" id="saveBtn">Save</button>
+                <label for="rpcUrl">RPC URL (include wallet name)</label>
+                <input type="text" id="rpcUrl" name="rpcUrl" value="http://127.0.0.1:38332/wallet/w1"
+                    placeholder="http://127.0.0.1:18443/wallet/mywallet" required>
+
+                <label for="rpcUsername">RPC Username</label>
+                <input type="text" id="rpcUsername" name="rpcUsername" value="user" placeholder="username" required>
+
+                <label for="rpcPassword">RPC Password</label>
+                <input type="password" id="rpcPassword" name="rpcPassword" value="pass" placeholder="password" required>
+
+                <div class="button-row" style="margin-top: 20px;">
+                    <button type="button" class="btn-danger" id="saveBtn">Save Settings</button>
+                </div>
             </form>
         </div>
     </div>
 
     <script>
         let bitcoinSettings = {};
+        let currentPSBT = null;
+        let signedPSBT = null;
+        let currentUTXOView = 'swapped';
+        let allUTXOs = [];
 
         const modal = document.getElementById("settingsModal");
         const openSettingsBtn = document.getElementById("openSettingsBtn");
         const closeBtn = document.getElementsByClassName("close")[0];
         const settingsForm = document.getElementById("settingsForm");
         const saveBtn = document.getElementById("saveBtn");
-        const fetchUTXOsBtn = document.getElementById("fetchUTXOsBtn");
-        const otherUTXOsBtn = document.getElementById("otherUTXOsBtn");
+        const fetchSwappedBtn = document.getElementById("fetchSwappedBtn");
+        const fetchOtherBtn = document.getElementById("fetchOtherBtn");
         const utxoList = document.getElementById("utxoList");
-        const createPSBTBtn = document.getElementById("createPSBTBtn"); // New PSBT button
+        const utxoActions = document.getElementById("utxoActions");
+        const labelSelectedBtn = document.getElementById("labelSelectedBtn");
+        const createPSBTBtn = document.getElementById("createPSBTBtn");
+        const fetchFeeBtn = document.getElementById("fetchFeeBtn");
+        const signPSBTBtn = document.getElementById("signPSBTBtn");
+        const broadcastBtn = document.getElementById("broadcastBtn");
+        const previewCard = document.getElementById("previewCard");
+        const resultCard = document.getElementById("resultCard");
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 4000);
+        }
 
         openSettingsBtn.onclick = () => modal.style.display = "block";
         closeBtn.onclick = () => modal.style.display = "none";
         window.onclick = (event) => {
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
+            if (event.target == modal) modal.style.display = "none";
         };
 
         saveBtn.onclick = () => {
             const formData = new FormData(settingsForm);
             bitcoinSettings = Object.fromEntries(formData.entries());
+            localStorage.setItem('octojoinSettings', JSON.stringify(bitcoinSettings));
             modal.style.display = "none";
-            alert("Settings saved successfully!");
+            showNotification("Settings saved successfully!");
         };
 
-        fetchUTXOsBtn.onclick = async () => {
-            if (!bitcoinSettings.rpcUrl) {
-                alert("Please configure settings first!");
+        const savedSettings = localStorage.getItem('octojoinSettings');
+        if (savedSettings) {
+            bitcoinSettings = JSON.parse(savedSettings);
+            document.getElementById('rpcUrl').value = bitcoinSettings.rpcUrl || '';
+            document.getElementById('rpcUsername').value = bitcoinSettings.rpcUsername || '';
+            document.getElementById('rpcPassword').value = bitcoinSettings.rpcPassword || '';
+        }
+
+        function renderUTXOs(utxos, showCheckbox = false) {
+            if (utxos.length === 0) {
+                utxoList.innerHTML = '<p style="color: #888; text-align: center;">No UTXOs found</p>';
+                utxoActions.style.display = 'none';
                 return;
+            }
+
+            utxoList.innerHTML = utxos.map((utxo, index) => `
+                <div class="utxo-item">
+                    ${showCheckbox ? `<input type="checkbox" data-index="${index}" class="utxo-checkbox">` : ''}
+                    <div class="utxo-details">
+                        <div class="txid">${utxo.txid}:${utxo.vout}</div>
+                        <div>
+                            <span class="amount">${utxo.amount} BTC</span>
+                            ${utxo.label ? `<span class="label">${utxo.label}</span>` : ''}
+                            <span style="color: #888; margin-left: 8px;">${utxo.confirmations} confirmations</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            utxoActions.style.display = showCheckbox ? 'flex' : 'none';
+        }
+
+        async function fetchUTXOs() {
+            if (!bitcoinSettings.rpcUrl) {
+                showNotification("Please configure settings first!", "error");
+                modal.style.display = "block";
+                return null;
             }
 
             try {
                 const response = await fetch("http://localhost:3000/fetch-utxos", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(bitcoinSettings)
                 });
 
                 const data = await response.json();
-                const utxos = data.result.filter(utxo => utxo.label === 'octojoin');
-                utxoList.innerHTML = utxos.length ? utxos.map(utxo => `
-                    <p>
-                        txid: ${utxo.txid}<br>
-                        vout: ${utxo.vout}<br>
-                        amount: ${utxo.amount} BTC<br>
-                    </p>
-                `).join('') : "<p>No UTXOs with label 'octojoin' found.</p>";
+                if (data.error) throw new Error(data.error);
+                return data.result;
             } catch (error) {
                 console.error("Error fetching UTXOs:", error);
-                alert("Error fetching UTXOs. Please check your settings and try again.");
+                showNotification("Error fetching UTXOs: " + error.message, "error");
+                return null;
+            }
+        }
+
+        fetchSwappedBtn.onclick = async () => {
+            fetchSwappedBtn.innerHTML = '<span class="loading"></span>Loading...';
+            const utxos = await fetchUTXOs();
+            fetchSwappedBtn.textContent = 'Swapped UTXOs';
+            if (utxos) {
+                allUTXOs = utxos;
+                currentUTXOView = 'swapped';
+                const swapped = utxos.filter(u => u.label === 'octojoin');
+                renderUTXOs(swapped, false);
             }
         };
 
-        otherUTXOsBtn.onclick = async () => {
+        fetchOtherBtn.onclick = async () => {
+            fetchOtherBtn.innerHTML = '<span class="loading"></span>Loading...';
+            const utxos = await fetchUTXOs();
+            fetchOtherBtn.textContent = 'Other UTXOs';
+            if (utxos) {
+                allUTXOs = utxos;
+                currentUTXOView = 'other';
+                const other = utxos.filter(u => u.label !== 'octojoin');
+                renderUTXOs(other, true);
+            }
+        };
+
+        labelSelectedBtn.onclick = async () => {
+            const checkboxes = document.querySelectorAll('.utxo-checkbox:checked');
+            if (checkboxes.length === 0) {
+                showNotification("Please select at least one UTXO", "error");
+                return;
+            }
+
+            const otherUTXOs = allUTXOs.filter(u => u.label !== 'octojoin');
+            let successCount = 0;
+
+            for (const cb of checkboxes) {
+                const index = parseInt(cb.dataset.index);
+                const utxo = otherUTXOs[index];
+
+                try {
+                    const response = await fetch("http://localhost:3000/label-utxo", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            ...bitcoinSettings,
+                            address: utxo.address,
+                            label: 'octojoin'
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!data.error) successCount++;
+                } catch (error) {
+                    console.error("Error labeling UTXO:", error);
+                }
+            }
+
+            showNotification(`Labeled ${successCount} UTXO(s) as 'octojoin'`);
+            fetchOtherBtn.click();
+        };
+
+        fetchFeeBtn.onclick = async () => {
             if (!bitcoinSettings.rpcUrl) {
-                alert("Please configure settings first!");
+                showNotification("Please configure settings first!", "error");
                 return;
             }
 
             try {
-                const response = await fetch("http://localhost:3000/fetch-utxos", {
+                const response = await fetch("http://localhost:3000/get-fee-rate", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(bitcoinSettings)
                 });
 
                 const data = await response.json();
-                const otherUTXOs = data.result.filter(utxo => utxo.label !== 'octojoin');
-                utxoList.innerHTML = otherUTXOs.length ? otherUTXOs.map(utxo => `
-                    <p>
-                        txid: ${utxo.txid}<br>
-                        vout: ${utxo.vout}<br>
-                        amount: ${utxo.amount} BTC<br>
-                    </p>
-                `).join('') : "<p>No Other UTXOs found.</p>";
+                document.getElementById('feeRate').value = data.feeRate.toFixed(1);
+                showNotification(`Fee rate: ${data.feeRate.toFixed(1)} sat/vB (${data.source})`);
             } catch (error) {
-                console.error("Error fetching Other UTXOs:", error);
-                alert("Error fetching Other UTXOs. Please check your settings and try again.");
+                showNotification("Error fetching fee rate", "error");
             }
         };
 
-createPSBTBtn.onclick = async () => {
-    const paymentAmount = parseFloat(document.getElementById("paymentAmount").value);
-    const numInputs = parseInt(document.getElementById("numInputs").value);
-    const numOutputs = parseInt(document.getElementById("numOutputs").value);
-    const bitcoinAddresses = document.getElementById("bitcoinAddresses").value.split(',').map(addr => addr.trim());
+        createPSBTBtn.onclick = async () => {
+            const paymentAmount = parseFloat(document.getElementById("paymentAmount").value);
+            const numInputs = parseInt(document.getElementById("numInputs").value);
+            const numOutputs = parseInt(document.getElementById("numOutputs").value);
+            const feeRate = parseFloat(document.getElementById("feeRate").value);
+            const bitcoinAddresses = document.getElementById("bitcoinAddresses").value
+                .split(',').map(addr => addr.trim()).filter(addr => addr);
 
-    // Validation conditions
-    if (numInputs < 3) {
-        alert("Number of inputs should be at least 3.");
-        return;
-    }
-    if (numOutputs < 2) {
-        alert("Number of outputs should be at least 2.");
-        return;
-    }
+            if (!paymentAmount || paymentAmount <= 0) {
+                showNotification("Please enter a valid payment amount", "error");
+                return;
+            }
+            if (numInputs < 3) {
+                showNotification("Number of inputs must be at least 3", "error");
+                return;
+            }
+            if (numOutputs < 2) {
+                showNotification("Number of outputs must be at least 2", "error");
+                return;
+            }
+            if (bitcoinAddresses.length < 2) {
+                showNotification("Please enter at least 2 output addresses", "error");
+                return;
+            }
 
-    try {
-        // Fetch UTXOs to verify swapped and other UTXO conditions
-        const response = await fetch("http://localhost:3000/fetch-utxos", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(bitcoinSettings)
-        });
+            createPSBTBtn.innerHTML = '<span class="loading"></span>Creating...';
+            createPSBTBtn.disabled = true;
 
-        const data = await response.json();
-        const swappedUTXOs = data.result.filter(utxo => utxo.label === 'octojoin');
-        const otherUTXOs = data.result.filter(utxo => utxo.label !== 'octojoin');
+            try {
+                const response = await fetch("http://localhost:3000/create-psbt", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        ...bitcoinSettings,
+                        paymentAmount,
+                        numInputs,
+                        numOutputs,
+                        feeRate,
+                        bitcoinAddresses
+                    })
+                });
 
-        // Check for at least 2 swapped UTXOs
-        if (swappedUTXOs.length < 2) {
-            alert("There should be at least 2 swapped UTXOs.");
-            return;
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                currentPSBT = data.psbt;
+                signedPSBT = null;
+
+                renderTransactionPreview(data.details);
+                previewCard.style.display = 'block';
+                resultCard.style.display = 'none';
+
+                document.getElementById('psbtDisplay').textContent = currentPSBT;
+                document.getElementById('psbtContainer').style.display = 'block';
+
+                signPSBTBtn.disabled = false;
+                signPSBTBtn.textContent = 'Sign PSBT';
+                broadcastBtn.disabled = true;
+
+                showNotification("PSBT created successfully!");
+            } catch (error) {
+                showNotification("Error: " + error.message, "error");
+            } finally {
+                createPSBTBtn.innerHTML = 'Create PSBT';
+                createPSBTBtn.disabled = false;
+            }
+        };
+
+        function renderTransactionPreview(details) {
+            const preview = document.getElementById('txPreview');
+
+            let inputsHtml = details.inputs.map(i => {
+                const isSwapped = i.label === 'octojoin';
+                const rowStyle = isSwapped ? 'background: rgba(218, 165, 32, 0.2); border-left: 3px solid #DAA520; padding-left: 10px;' : '';
+                return `
+                    <div class="preview-row" style="${rowStyle}">
+                        <span class="preview-label" style="font-family: monospace; font-size: 12px; word-break: break-all;">${i.txid}:${i.vout}${isSwapped ? ' <span style="color: #DAA520;">(swapped)</span>' : ''}</span>
+                        <span class="preview-value highlight">${i.amount} BTC</span>
+                    </div>
+                `;
+            }).join('');
+
+            let outputsHtml = Object.entries(details.paymentOutputs).map(([addr, amount]) => `
+                <div class="preview-row">
+                    <span class="preview-label" style="font-family: monospace; font-size: 12px; word-break: break-all;">${addr}</span>
+                    <span class="preview-value highlight">${amount} BTC</span>
+                </div>
+            `).join('');
+
+            if (details.changeAmount > 0) {
+                outputsHtml += `
+                    <div class="preview-row">
+                        <span class="preview-label" style="font-family: monospace; font-size: 12px; word-break: break-all;">${details.changeAddress} (change)</span>
+                        <span class="preview-value highlight">${details.changeAmount.toFixed(8)} BTC</span>
+                    </div>
+                `;
+            }
+
+            let denomsHtml = details.denominations.map(d =>
+                `<span class="denomination-tag">${d} BTC</span>`
+            ).join('');
+
+            preview.innerHTML = `
+                <div class="preview-section">
+                    <h3>Inputs </h3>
+                    ${inputsHtml}
+                    <div class="preview-row" style="border-top: 1px solid rgba(255,255,255,0.2); margin-top: 10px; padding-top: 10px;">
+                        <span class="preview-label">Total Input</span>
+                        <span class="preview-value highlight">${details.totalInputValue.toFixed(8)} BTC</span>
+                    </div>
+                </div>
+                
+                <div class="preview-section">
+                    <h3>Outputs</h3>
+                    ${outputsHtml}
+                </div>
+                
+                <div class="preview-section">
+                    <h3>Denomination Breakdown</h3>
+                    <div>${denomsHtml}</div>
+                </div>
+            `;
         }
 
-        // Check for at least 1 other UTXO
-        if (otherUTXOs.length < 1) {
-            alert("There should be at least 1 other UTXO.");
-            return;
-        }
+        signPSBTBtn.onclick = async () => {
+            if (!currentPSBT) {
+                showNotification("No PSBT to sign", "error");
+                return;
+            }
 
-        // If all conditions are met, send a request to create PSBT
-        const createResponse = await fetch("http://localhost:3000/create-psbt", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                ...bitcoinSettings,
-                paymentAmount,
-                bitcoinAddresses,
-                swappedUTXOs: swappedUTXOs.slice(0, 2), // Use 2 swapped UTXOs
-                otherUTXO: otherUTXOs[0]                // Use 1 other UTXO
-            })
-        });
+            signPSBTBtn.innerHTML = '<span class="loading"></span>Signing...';
+            signPSBTBtn.disabled = true;
 
-        const psbtData = await createResponse.json();
-        if (psbtData.error) {
-            throw new Error(psbtData.error);
-        }
+            try {
+                const response = await fetch("http://localhost:3000/sign-psbt", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        ...bitcoinSettings,
+                        psbt: currentPSBT
+                    })
+                });
 
-        alert("PSBT created successfully! Check console for details.");
-        console.log("PSBT:", psbtData.psbt);
-    } catch (error) {
-        console.error("Error creating PSBT:", error);
-        alert("Error creating PSBT. Please check your inputs and try again.");
-    }
-};
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
 
+                signedPSBT = data.psbt;
+                document.getElementById('psbtDisplay').textContent = signedPSBT;
+
+                if (data.complete) {
+                    signPSBTBtn.innerHTML = '✓ Signed';
+                    broadcastBtn.disabled = false;
+                    showNotification("PSBT signed and complete!");
+                } else {
+                    signPSBTBtn.textContent = 'Partially Signed';
+                    showNotification("PSBT partially signed (needs more signatures)", "error");
+                }
+            } catch (error) {
+                showNotification("Error signing: " + error.message, "error");
+                signPSBTBtn.textContent = 'Sign PSBT';
+                signPSBTBtn.disabled = false;
+            }
+        };
+
+        broadcastBtn.onclick = async () => {
+            if (!signedPSBT) {
+                showNotification("No signed PSBT to broadcast", "error");
+                return;
+            }
+
+            broadcastBtn.innerHTML = '<span class="loading"></span>Broadcasting...';
+            broadcastBtn.disabled = true;
+
+            try {
+                const response = await fetch("http://localhost:3000/broadcast-tx", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        ...bitcoinSettings,
+                        psbt: signedPSBT
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                resultCard.style.display = 'block';
+                document.getElementById('txResult').innerHTML = `
+                    <div class="preview-section">
+                        <div class="preview-row">
+                            <span class="preview-label">Transaction ID</span>
+                            <span class="preview-value" style="word-break: break-all; color: #00d4aa;">${data.txid}</span>
+                        </div>
+                    </div>
+                `;
+
+                broadcastBtn.innerHTML = '✓ Broadcast';
+                showNotification("Transaction broadcast successfully!");
+
+                currentPSBT = null;
+                signedPSBT = null;
+            } catch (error) {
+                showNotification("Error broadcasting: " + error.message, "error");
+                broadcastBtn.textContent = 'Broadcast Transaction';
+                broadcastBtn.disabled = false;
+            }
+        };
     </script>
 </body>
-</html>
 
+</html>

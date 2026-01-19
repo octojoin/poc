@@ -1,7 +1,12 @@
 ### proof of concept for octojoin
 
-Save the bitcoin core RPC settings before using this proof of concept
+```
+cd /home/test/Documents/poc/bitcoin-rpc-proxy
+node server.js
+```
 
-![image](https://github.com/user-attachments/assets/85dabd54-7a96-4c86-bafb-61fe56a971f6)
+- Run bitcoind with a wallet that has some UTXOs
+- Save RPC settings
+- Create PSBT
 
 
