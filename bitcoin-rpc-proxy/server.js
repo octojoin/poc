@@ -58,6 +58,10 @@ function decomposeAmount(amount) {
 
     if (remaining > DUST_THRESHOLD) {
         denominations.push(remaining);
+    } else if (remaining > 0 && denominations.length > 0) {
+        // fold a sub-dust remainder into the last output instead of losing it to fees
+        const last = denominations.length - 1;
+        denominations[last] = Math.round((denominations[last] + remaining) * 100000000) / 100000000;
     }
 
     return denominations;
