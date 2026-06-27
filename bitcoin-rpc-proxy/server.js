@@ -79,50 +79,46 @@ function distributeOutputs(denominations, addresses) {
     return outputs;
 }
 
-function selectUTXOs(swappedUTXOs, otherUTXOs, numInputs) {
+function chooseCombinations(arr, k) {
+    if (k === 0) return [[]];
+    if (k > arr.length) return [];
+    const result = [];
+    for (let i = 0; i <= arr.length - k; i++) {
+        for (const rest of chooseCombinations(arr.slice(i + 1), k - 1)) {
+            result.push([arr[i], ...rest]);
+        }
+    }
+    return result;
+}
+
+// Select (numInputs - 1) swapped decoys plus exactly one sender coin so that the
+// change is smaller than the smallest input. Otherwise an input could be dropped
+// while the payment is still funded - the unnecessary input heuristic - which
+// fingerprints the transaction (https://eprint.iacr.org/2022/589.pdf). Prefer a
+// clean selection, then the smallest change. Returns null when no funding
+// selection exists. target is the payment amount plus the estimated fee, in BTC.
+function selectUTXOs(swappedUTXOs, otherUTXOs, numInputs, target) {
     const numSwapped = numInputs - 1;
+    if (swappedUTXOs.length < numSwapped || otherUTXOs.length < 1) return null;
 
-    const sortedSwapped = [...swappedUTXOs].sort((a, b) => a.confirmations - b.confirmations);
-    const sortedOther = [...otherUTXOs].sort((a, b) => a.confirmations - b.confirmations);
+    const swappedPool = [...swappedUTXOs].sort((a, b) => a.amount - b.amount).slice(0, numSwapped + 6);
+    const senders = [...otherUTXOs].sort((a, b) => a.amount - b.amount).slice(0, 10);
 
-    const selectedSwapped = [];
-    if (sortedSwapped.length > 0) {
-        const recentCount = Math.max(1, Math.floor(numSwapped * 0.3));
-        const olderCount = numSwapped - recentCount;
-
-        for (let i = 0; i < recentCount && i < sortedSwapped.length; i++) {
-            selectedSwapped.push(sortedSwapped[i]);
-        }
-
-        const midPoint = Math.floor(sortedSwapped.length / 2);
-        for (let i = 0; i < olderCount && midPoint + i < sortedSwapped.length; i++) {
-            if (!selectedSwapped.includes(sortedSwapped[midPoint + i])) {
-                selectedSwapped.push(sortedSwapped[midPoint + i]);
-            }
-        }
-
-        for (const utxo of sortedSwapped) {
-            if (selectedSwapped.length >= numSwapped) break;
-            if (!selectedSwapped.includes(utxo)) {
-                selectedSwapped.push(utxo);
+    let best = null;
+    for (const combo of chooseCombinations(swappedPool, numSwapped)) {
+        const swappedValue = combo.reduce((sum, u) => sum + u.amount, 0);
+        for (const sender of senders) {
+            const total = Math.round((swappedValue + sender.amount) * 100000000) / 100000000;
+            if (total < target) continue;
+            const change = Math.round((total - target) * 100000000) / 100000000;
+            const minInput = Math.min(sender.amount, ...combo.map(u => u.amount));
+            const clean = change < minInput;
+            if (!best || (clean && !best.clean) || (clean === best.clean && change < best.change)) {
+                best = { swapped: combo, other: sender, total, change, clean };
             }
         }
     }
-
-    let selectedOther = null;
-    if (sortedOther.length > 0 && selectedSwapped.length > 0) {
-        const avgAge = selectedSwapped.reduce((sum, u) => sum + u.confirmations, 0) / selectedSwapped.length;
-        selectedOther = sortedOther.reduce((closest, utxo) => {
-            return Math.abs(utxo.confirmations - avgAge) < Math.abs(closest.confirmations - avgAge) ? utxo : closest;
-        });
-    } else if (sortedOther.length > 0) {
-        selectedOther = sortedOther[0];
-    }
-
-    return {
-        swapped: selectedSwapped.slice(0, numSwapped),
-        other: selectedOther
-    };
+    return best;
 }
 
 function estimateTxSize(numInputs, numOutputs) {
@@ -225,32 +221,23 @@ app.post('/create-psbt', async (req, res) => {
             return res.status(400).json({ error: "Need at least 2 output addresses" });
         }
 
-        const selected = selectUTXOs(swappedUTXOs, otherUTXOs, numInputs);
+        const estimatedSize = estimateTxSize(numInputs, numOutputs + 1);
+        const estimatedFee = (estimatedSize * feeRate) / 100000000;
+        const target = Math.round((paymentAmount + estimatedFee) * 100000000) / 100000000;
 
-        if (selected.swapped.length < requiredSwapped) {
+        const selected = selectUTXOs(swappedUTXOs, otherUTXOs, numInputs, target);
+        if (!selected) {
             return res.status(400).json({
-                error: `Could not select enough swapped UTXOs. Need ${requiredSwapped}, selected ${selected.swapped.length}`
+                error: `Could not select inputs without an unnecessary input. Use smaller or different 'octojoin' coins so the change is smaller than every input, or add more funds.`
             });
-        }
-        if (!selected.other) {
-            return res.status(400).json({ error: "Could not select a non-swapped UTXO" });
         }
 
         const allSelectedUTXOs = [...selected.swapped, selected.other];
-        const totalInputValue = totalValue(allSelectedUTXOs);
-
-        const estimatedSize = estimateTxSize(numInputs, numOutputs + 1);
-        const estimatedFee = (estimatedSize * feeRate) / 100000000;
-
-        if (totalInputValue < paymentAmount + estimatedFee) {
-            return res.status(400).json({
-                error: `Insufficient funds. Have ${totalInputValue.toFixed(8)} BTC, need ${(paymentAmount + estimatedFee).toFixed(8)} BTC (payment + fee)`
-            });
-        }
+        const totalInputValue = selected.total;
+        const changeAmount = selected.change;
 
         const denominations = decomposeAmount(paymentAmount);
         const paymentOutputs = distributeOutputs(denominations, bitcoinAddresses);
-        const changeAmount = Math.round((totalInputValue - paymentAmount - estimatedFee) * 100000000) / 100000000;
 
         const inputs = allSelectedUTXOs.map(utxo => ({
             txid: utxo.txid,
