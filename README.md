@@ -1,7 +1,7 @@
 ### octojoin
 
 Reference implementation of [Octojoin](https://github.com/octojoin/bip): a payment that spends
-swapped decoy coins alongside one of your own, splits the amount into standard denominations across
+swapped coins alongside one of your own, splits the amount into standard denominations across
 several outputs, and avoids the unnecessary input heuristic.
 
 It drives a Bitcoin Core wallet over RPC and serves a small web UI.

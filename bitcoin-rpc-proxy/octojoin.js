@@ -143,7 +143,7 @@ export function chooseCombinations(items, k) {
     return result;
 }
 
-// Select (numInputs - 1) swapped decoys plus exactly one sender coin so that the
+// Select (numInputs - 1) swapped coins plus exactly one sender coin so that the
 // change is smaller than the smallest input. Otherwise an input could be dropped
 // while the payment is still funded - the unnecessary input heuristic - which
 // fingerprints the transaction (https://eprint.iacr.org/2022/589.pdf). Prefer a
@@ -240,7 +240,7 @@ export function planOctojoin({ utxos, paymentSats, outputs, numInputs, numOutput
     if (!selection) {
         throw new OctojoinError(
             'insufficientFunds',
-            'Could not fund the payment from the swapped decoys plus a single sender coin. Use larger coins or lower the amount.',
+            'Could not fund the payment from the swapped coins plus a single sender coin. Use larger coins or lower the amount.',
         );
     }
 
