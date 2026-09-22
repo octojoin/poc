@@ -565,6 +565,7 @@
         let signedPSBT = null;
         let canSign = true;
         let allOtherUTXOs = [];
+        let coinView = null;
 
         const modal = document.getElementById("settingsModal");
         const openSettingsBtn = document.getElementById("openSettingsBtn");
@@ -711,30 +712,23 @@
             utxoActions.style.display = showCheckbox ? 'flex' : 'none';
         }
 
-        fetchSwappedBtn.onclick = async () => {
-            fetchSwappedBtn.innerHTML = '<span class="loading"></span>Loading...';
+        async function showCoins(view) {
+            const button = view === 'swapped' ? fetchSwappedBtn : fetchOtherBtn;
+            button.innerHTML = '<span class="loading"></span>Loading...';
             try {
                 const data = await api('/utxos');
-                renderUTXOs(data.swapped, false);
-            } catch (error) {
-                showNotification(error.message, 'error');
-            } finally {
-                fetchSwappedBtn.textContent = 'Swapped UTXOs';
-            }
-        };
-
-        fetchOtherBtn.onclick = async () => {
-            fetchOtherBtn.innerHTML = '<span class="loading"></span>Loading...';
-            try {
-                const data = await api('/utxos');
+                coinView = view;
                 allOtherUTXOs = data.other;
-                renderUTXOs(data.other, true);
+                renderUTXOs(view === 'swapped' ? data.swapped : data.other, view === 'other');
             } catch (error) {
                 showNotification(error.message, 'error');
             } finally {
-                fetchOtherBtn.textContent = 'Other UTXOs';
+                button.textContent = view === 'swapped' ? 'Swapped UTXOs' : 'Other UTXOs';
             }
-        };
+        }
+
+        fetchSwappedBtn.onclick = () => showCoins('swapped');
+        fetchOtherBtn.onclick = () => showCoins('other');
 
         labelSelectedBtn.onclick = async () => {
             const checkboxes = document.querySelectorAll('.utxo-checkbox:checked');
@@ -758,7 +752,7 @@
             }
 
             showNotification(`Labeled ${labeled} address(es) as 'octojoin'`);
-            fetchOtherBtn.click();
+            showCoins('other');
             loadStatus();
         };
 
@@ -997,6 +991,7 @@
                 externalPSBT.value = '';
                 previewCard.style.display = 'none';
                 loadStatus();
+                if (coinView) showCoins(coinView);
             } catch (error) {
                 showNotification("Error broadcasting: " + error.message, "error");
                 broadcastBtn.textContent = 'Broadcast Transaction';
