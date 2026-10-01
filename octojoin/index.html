@@ -487,6 +487,11 @@
                 </div>
             </div>
 
+            <label for="equalOutputs" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="equalOutputs" style="width: auto; margin: 0;">
+                Equal amounts in outputs
+            </label>
+
             <label for="bitcoinAddresses">Output Addresses (comma-separated, one per output)</label>
             <input type="text" id="bitcoinAddresses" placeholder="bc1q..., bc1q...">
 
@@ -760,6 +765,7 @@
             const numInputs = parseInt(document.getElementById("numInputs").value, 10);
             const numOutputs = parseInt(document.getElementById("numOutputs").value, 10);
             const feeRate = parseFloat(document.getElementById("feeRate").value);
+            const equalOutputs = document.getElementById("equalOutputs").checked;
             const bitcoinAddresses = document.getElementById("bitcoinAddresses").value
                 .split(',').map(addr => addr.trim()).filter(addr => addr);
 
@@ -791,6 +797,7 @@
                         numInputs,
                         numOutputs,
                         feeRate,
+                        equalOutputs,
                         bitcoinAddresses
                     })
                 });
@@ -863,7 +870,7 @@
                 </div>
 
                 <div class="preview-section">
-                    <div class="preview-row"><span class="preview-label">Payment</span><span class="preview-value">${btc(details.paymentSats)} BTC</span></div>
+                    <div class="preview-row"><span class="preview-label">Payment</span><span class="preview-value">${btc(details.paymentSats)} BTC, ${details.equalOutputs ? 'equal amounts' : 'split at random'}</span></div>
                     <div class="preview-row"><span class="preview-label">Fee</span><span class="preview-value">${details.feeSats} sat at ${details.feeRate} sat/vB</span></div>
                     <div class="preview-row"><span class="preview-label">Locktime</span><span class="preview-value">${details.locktime}</span></div>
                     <div class="preview-row"><span class="preview-label">Unnecessary input heuristic</span><span class="preview-value">${details.uihClean ? 'clean' : 'not clean'}</span></div>

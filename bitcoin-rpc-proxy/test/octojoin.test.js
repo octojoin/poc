@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
+    CHANGE_BESIDE_EQUAL_OUTPUTS,
     CHANGE_IDENTIFIABLE,
     Randomness,
     UNNECESSARY_INPUT,
     dustThreshold,
+    equalSplit,
     estimateFee,
     inputVbytes,
     isOctojoinLabel,
@@ -40,7 +42,7 @@ function outputs(count) {
     ].slice(0, count);
 }
 
-function plan(utxos, paymentSats, { numOutputs = 2, numInputs = 3, feeRate = 1, seed = 'octojoin' } = {}) {
+function plan(utxos, paymentSats, { numOutputs = 2, numInputs = 3, feeRate = 1, seed = 'octojoin', equalOutputs = false } = {}) {
     return planOctojoin({
         utxos,
         paymentSats,
@@ -50,6 +52,7 @@ function plan(utxos, paymentSats, { numOutputs = 2, numInputs = 3, feeRate = 1, 
         feeRate,
         changeSpk: P2WPKH,
         rng: new Randomness(Buffer.from(seed)),
+        equalOutputs,
     });
 }
 
@@ -163,6 +166,43 @@ test('planOctojoin prefers change that looks like a payment output', () => {
     }
 });
 
+test('planOctojoin prefers a selection without change', () => {
+    // the 50,400 coin leaves 92 sat after the fee, which goes to the fee instead of a change output
+    const utxos = [coin(120000, true), coin(130000, true), coin(140000, false), coin(50400, false)];
+    for (let seed = 0; seed < 20; seed++) {
+        const p = plan(utxos, 300000, { seed: `s${seed}` });
+        assert.equal(p.changeSats, 0);
+        assert.equal(p.feeSats, 400);
+        assert.equal(p.inputs[2].valueSats, 50400);
+        assert.deepEqual(p.warnings, []);
+    }
+});
+
+test('equal outputs split the amount evenly', () => {
+    assert.deepEqual(equalSplit(300000, 2), [150000, 150000]);
+    assert.deepEqual(equalSplit(300001, 2), [150001, 150000]);
+    assert.deepEqual(equalSplit(100000, 3), [33334, 33333, 33333]);
+    assert.equal(smallestSplittable(2, 546, true), 2 * 547);
+});
+
+test('equal outputs prefer a selection without change and warn otherwise', () => {
+    const swapped = [coin(120000, true), coin(130000, true)];
+    const p = plan([...swapped, coin(140000, false), coin(50400, false)], 300000, { equalOutputs: true });
+    assert.deepEqual(values(p), [150000, 150000]);
+    assert.equal(p.changeSats, 0);
+    assert.deepEqual(p.warnings, []);
+    const withChange = plan([...swapped, coin(140000, false)], 300000, { equalOutputs: true });
+    assert.deepEqual(values(withChange), [150000, 150000]);
+    assert.equal(withChange.changeSats, 89692);
+    assert.deepEqual(withChange.warnings, [CHANGE_BESIDE_EQUAL_OUTPUTS]);
+});
+
+test('equal outputs only need every output above dust', () => {
+    const utxos = [coin(300000, true), coin(300000, true), coin(300000, false)];
+    assert.throws(() => plan(utxos, 2 * (DUST + 1) - 1, { equalOutputs: true }), { code: 'outputBelowDust' });
+    assert.deepEqual(values(plan(utxos, 2 * (DUST + 1), { equalOutputs: true })), [DUST + 1, DUST + 1]);
+});
+
 test('change below every input has a payment output below every input too', () => {
     const utxos = [coin(120000, true), coin(130000, true), coin(140000, false)];
     const ranks = new Set();
@@ -240,6 +280,7 @@ test('plans match the shared test vectors', () => {
                 feeRate: v.feeRate,
                 changeSpk: v.changeSpk,
                 rng: new Randomness(Buffer.from(v.seed, 'hex')),
+                equalOutputs: v.equalOutputs,
             });
             result = {
                 inputs: p.inputs.map(u => u.vout),

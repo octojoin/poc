@@ -28,6 +28,7 @@
   "numOutputs": 2,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -78,6 +79,7 @@
   "numOutputs": 2,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -123,6 +125,7 @@
   "numOutputs": 2,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -168,6 +171,7 @@
   "numOutputs": 2,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -213,6 +217,7 @@
   "numOutputs": 2,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -258,6 +263,7 @@
   "numOutputs": 2,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -309,6 +315,7 @@
   "numOutputs": 3,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     2,
@@ -359,6 +366,7 @@
   "numOutputs": 5,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -432,6 +440,7 @@
   "numOutputs": 2,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -477,6 +486,7 @@
   "numOutputs": 2,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -522,6 +532,7 @@
   "numOutputs": 2,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "error": "amountBelowDust"
   }
@@ -555,6 +566,7 @@
   "numOutputs": 2,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "error": "outputBelowDust"
   }
@@ -583,6 +595,7 @@
   "numOutputs": 2,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "error": "notEnoughSwappedCoins"
   }
@@ -616,6 +629,7 @@
   "numOutputs": 2,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "error": "noSenderCoin"
   }
@@ -649,8 +663,245 @@
   "numOutputs": 2,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "error": "insufficientFunds"
+  }
+ },
+ {
+  "name": "no change is preferred",
+  "seed": "1010101010101010101010101010101010101010101010101010101010101010",
+  "coins": [
+   {
+    "valueSats": 120000,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e8"
+   },
+   {
+    "valueSats": 130000,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e9"
+   },
+   {
+    "valueSats": 140000,
+    "isSwapped": false,
+    "spk": "001400000000000000000000000000000000000003ea"
+   },
+   {
+    "valueSats": 50400,
+    "isSwapped": false,
+    "spk": "001400000000000000000000000000000000000003eb"
+   }
+  ],
+  "paymentSats": 300000,
+  "outputs": [
+   "00140000000000000000000000000000000000000001",
+   "00140000000000000000000000000000000000000002"
+  ],
+  "numInputs": 3,
+  "numOutputs": 2,
+  "feeRate": 1,
+  "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
+  "expected": {
+   "inputs": [
+    0,
+    1,
+    3
+   ],
+   "payments": [
+    147792,
+    152208
+   ],
+   "changeSats": 0,
+   "feeSats": 400,
+   "uihClean": true,
+   "changeHidden": true
+  }
+ },
+ {
+  "name": "equal outputs without change",
+  "seed": "1111111111111111111111111111111111111111111111111111111111111111",
+  "coins": [
+   {
+    "valueSats": 120000,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e8"
+   },
+   {
+    "valueSats": 130000,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e9"
+   },
+   {
+    "valueSats": 140000,
+    "isSwapped": false,
+    "spk": "001400000000000000000000000000000000000003ea"
+   },
+   {
+    "valueSats": 50400,
+    "isSwapped": false,
+    "spk": "001400000000000000000000000000000000000003eb"
+   }
+  ],
+  "paymentSats": 300000,
+  "outputs": [
+   "00140000000000000000000000000000000000000001",
+   "00140000000000000000000000000000000000000002"
+  ],
+  "numInputs": 3,
+  "numOutputs": 2,
+  "feeRate": 1,
+  "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": true,
+  "expected": {
+   "inputs": [
+    0,
+    1,
+    3
+   ],
+   "payments": [
+    150000,
+    150000
+   ],
+   "changeSats": 0,
+   "feeSats": 400,
+   "uihClean": true,
+   "changeHidden": true
+  }
+ },
+ {
+  "name": "equal outputs with change",
+  "seed": "1212121212121212121212121212121212121212121212121212121212121212",
+  "coins": [
+   {
+    "valueSats": 120000,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e8"
+   },
+   {
+    "valueSats": 130000,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e9"
+   },
+   {
+    "valueSats": 140000,
+    "isSwapped": false,
+    "spk": "001400000000000000000000000000000000000003ea"
+   }
+  ],
+  "paymentSats": 300001,
+  "outputs": [
+   "00140000000000000000000000000000000000000001",
+   "00140000000000000000000000000000000000000002"
+  ],
+  "numInputs": 3,
+  "numOutputs": 2,
+  "feeRate": 1,
+  "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": true,
+  "expected": {
+   "inputs": [
+    0,
+    1,
+    2
+   ],
+   "payments": [
+    150001,
+    150000
+   ],
+   "changeSats": 89691,
+   "feeSats": 308,
+   "uihClean": true,
+   "changeHidden": false
+  }
+ },
+ {
+  "name": "three equal outputs",
+  "seed": "1313131313131313131313131313131313131313131313131313131313131313",
+  "coins": [
+   {
+    "valueSats": 199300,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e8"
+   },
+   {
+    "valueSats": 249300,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e9"
+   },
+   {
+    "valueSats": 149300,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003ea"
+   },
+   {
+    "valueSats": 300000,
+    "isSwapped": false,
+    "spk": "001400000000000000000000000000000000000003eb"
+   }
+  ],
+  "paymentSats": 750000,
+  "outputs": [
+   "00140000000000000000000000000000000000000001",
+   "00140000000000000000000000000000000000000002",
+   "00140000000000000000000000000000000000000003"
+  ],
+  "numInputs": 4,
+  "numOutputs": 3,
+  "feeRate": 2,
+  "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": true,
+  "expected": {
+   "inputs": [
+    2,
+    0,
+    1,
+    3
+   ],
+   "payments": [
+    250000,
+    250000,
+    250000
+   ],
+   "changeSats": 147086,
+   "feeSats": 814,
+   "uihClean": true,
+   "changeHidden": false
+  }
+ },
+ {
+  "name": "too small for two equal outputs",
+  "seed": "1414141414141414141414141414141414141414141414141414141414141414",
+  "coins": [
+   {
+    "valueSats": 300000,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e8"
+   },
+   {
+    "valueSats": 300000,
+    "isSwapped": true,
+    "spk": "001400000000000000000000000000000000000003e9"
+   },
+   {
+    "valueSats": 300000,
+    "isSwapped": false,
+    "spk": "001400000000000000000000000000000000000003ea"
+   }
+  ],
+  "paymentSats": 589,
+  "outputs": [
+   "00140000000000000000000000000000000000000001",
+   "00140000000000000000000000000000000000000002"
+  ],
+  "numInputs": 3,
+  "numOutputs": 2,
+  "feeRate": 2,
+  "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": true,
+  "expected": {
+   "error": "outputBelowDust"
   }
  },
  {
@@ -693,6 +944,7 @@
   "numOutputs": 3,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     2,
@@ -755,6 +1007,7 @@
   "numOutputs": 3,
   "feeRate": 2.5,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     2,
@@ -816,6 +1069,7 @@
   "numOutputs": 2,
   "feeRate": 11,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     1,
@@ -876,6 +1130,7 @@
   "numOutputs": 2,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -939,6 +1194,7 @@
   "numOutputs": 4,
   "feeRate": 2.5,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": true,
   "expected": {
    "inputs": [
     0,
@@ -947,10 +1203,10 @@
     4
    ],
    "payments": [
-    113968,
-    244214,
-    134953,
-    229356
+    180623,
+    180623,
+    180623,
+    180622
    ],
    "changeSats": 59908,
    "feeSats": 1095,
@@ -1008,6 +1264,7 @@
   "numOutputs": 3,
   "feeRate": 11,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     1,
@@ -1065,6 +1322,7 @@
   "numOutputs": 3,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     2,
@@ -1116,6 +1374,7 @@
   "numOutputs": 2,
   "feeRate": 11,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -1186,6 +1445,7 @@
   "numOutputs": 2,
   "feeRate": 11,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     5,
@@ -1255,6 +1515,7 @@
   "numOutputs": 4,
   "feeRate": 2.5,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": true,
   "expected": {
    "inputs": [
     0,
@@ -1262,15 +1523,15 @@
     5
    ],
    "payments": [
-    214800,
-    486297,
-    293170,
-    427214
+    355371,
+    355370,
+    355370,
+    355370
    ],
    "changeSats": 180435,
    "feeSats": 925,
    "uihClean": true,
-   "changeHidden": true
+   "changeHidden": false
   }
  },
  {
@@ -1318,6 +1579,7 @@
   "numOutputs": 3,
   "feeRate": 11,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     3,
@@ -1380,6 +1642,7 @@
   "numOutputs": 2,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     3,
@@ -1437,6 +1700,7 @@
   "numOutputs": 4,
   "feeRate": 2.5,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     2,
@@ -1501,6 +1765,7 @@
   "numOutputs": 2,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     3,
@@ -1579,24 +1844,25 @@
   "numOutputs": 4,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": true,
   "expected": {
    "inputs": [
     4,
-    3,
     2,
-    1,
+    5,
+    0,
     6
    ],
    "payments": [
-    19615191,
-    35762222,
-    21289254,
-    30480933
+    26786900,
+    26786900,
+    26786900,
+    26786900
    ],
-   "changeSats": 19926527,
+   "changeSats": 35670003,
    "feeSats": 1012,
    "uihClean": false,
-   "changeHidden": true
+   "changeHidden": false
   }
  },
  {
@@ -1633,6 +1899,7 @@
   "numOutputs": 2,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -1703,6 +1970,7 @@
   "numOutputs": 2,
   "feeRate": 2.5,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     1,
@@ -1768,6 +2036,7 @@
   "numOutputs": 2,
   "feeRate": 11,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -1814,6 +2083,7 @@
   "numOutputs": 3,
   "feeRate": 11,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     1,
@@ -1880,6 +2150,7 @@
   "numOutputs": 2,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": true,
   "expected": {
    "inputs": [
     2,
@@ -1887,13 +2158,13 @@
     4
    ],
    "payments": [
-    86269410,
-    35008305
+    60638858,
+    60638857
    ],
    "changeSats": 44636756,
    "feeSats": 616,
    "uihClean": true,
-   "changeHidden": true
+   "changeHidden": false
   }
  },
  {
@@ -1957,6 +2228,7 @@
   "numOutputs": 4,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     1,
@@ -2017,6 +2289,7 @@
   "numOutputs": 3,
   "feeRate": 2,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     1,
@@ -2079,6 +2352,7 @@
   "numOutputs": 2,
   "feeRate": 2.5,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     0,
@@ -2145,6 +2419,7 @@
   "numOutputs": 2,
   "feeRate": 2.5,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": false,
   "expected": {
    "inputs": [
     3,
@@ -2214,23 +2489,24 @@
   "numOutputs": 4,
   "feeRate": 1,
   "changeSpk": "0014cccccccccccccccccccccccccccccccccccccccc",
+  "equalOutputs": true,
   "expected": {
    "inputs": [
     4,
-    2,
+    0,
     1,
     6
    ],
    "payments": [
-    212452,
-    545102,
-    273127,
-    449871
+    370138,
+    370138,
+    370138,
+    370138
    ],
-   "changeSats": 468287,
+   "changeSats": 581893,
    "feeSats": 438,
    "uihClean": false,
-   "changeHidden": true
+   "changeHidden": false
   }
  }
 ]
