@@ -487,6 +487,11 @@
                 </div>
             </div>
 
+            <label for="equalInputs" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="equalInputs" style="width: auto; margin: 0;">
+                Equal amounts in inputs
+            </label>
+
             <label for="equalOutputs" style="display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="equalOutputs" style="width: auto; margin: 0;">
                 Equal amounts in outputs
@@ -766,6 +771,7 @@
             const numOutputs = parseInt(document.getElementById("numOutputs").value, 10);
             const feeRate = parseFloat(document.getElementById("feeRate").value);
             const equalOutputs = document.getElementById("equalOutputs").checked;
+            const equalInputs = document.getElementById("equalInputs").checked;
             const bitcoinAddresses = document.getElementById("bitcoinAddresses").value
                 .split(',').map(addr => addr.trim()).filter(addr => addr);
 
@@ -798,6 +804,7 @@
                         numOutputs,
                         feeRate,
                         equalOutputs,
+                        equalInputs,
                         bitcoinAddresses
                     })
                 });
