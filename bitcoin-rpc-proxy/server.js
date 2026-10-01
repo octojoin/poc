@@ -291,6 +291,7 @@ app.post('/create-psbt', async (req, res) => {
         numOutputs = MIN_OUTPUTS,
         feeRate = 1.0,
         equalOutputs = false,
+        equalInputs = false,
     } = req.body;
 
     try {
@@ -342,6 +343,7 @@ app.post('/create-psbt', async (req, res) => {
             feeRate,
             changeSpk: changeInfo.scriptPubKey,
             equalOutputs: equalOutputs === true,
+            equalInputs: equalInputs === true,
         });
 
         const rpcInputs = shuffle(plan.inputs).map(u => ({ txid: u.txid, vout: u.vout }));
@@ -373,6 +375,7 @@ app.post('/create-psbt', async (req, res) => {
             uihClean: plan.uihClean,
             changeHidden: plan.changeHidden,
             equalOutputs: plan.equalOutputs,
+            equalInputs: plan.equalInputs,
             warnings: plan.warnings.map(code => WARNINGS[code]),
             locktime: height,
         };
