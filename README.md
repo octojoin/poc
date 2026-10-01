@@ -48,9 +48,10 @@ The preview warns when no choice of coins avoids an unnecessary input, or when t
 be made to look like one of the payment outputs. Coins that leave no change are preferred. Coins of
 a little less than half the amount each work best with the defaults of 3 inputs and 2 outputs.
 
-Equal amounts in outputs splits the payment into outputs of equal value instead of random ones.
-Equal outputs keep the change hidden only when there is no change, so the preview warns when there
-is change.
+Equal amounts in inputs spends coins whose values are within 10% of each other, looking at every
+swapped coin, and the preview warns when no choice of coins has such inputs. Equal amounts in outputs
+splits the payment into outputs of equal value instead of random ones. Equal outputs keep the change
+hidden only when there is no change, so the preview warns when there is change.
 
 A draft survives a restart, so the PSBT is still there after the server or container is restarted.
 
