@@ -5,11 +5,13 @@ import {
     CHANGE_BESIDE_EQUAL_OUTPUTS,
     CHANGE_IDENTIFIABLE,
     Randomness,
+    UNEQUAL_INPUTS,
     UNNECESSARY_INPUT,
     dustThreshold,
     equalSplit,
     estimateFee,
     inputVbytes,
+    inputsNearEqual,
     isOctojoinLabel,
     isRound,
     outputVbytes,
@@ -42,7 +44,7 @@ function outputs(count) {
     ].slice(0, count);
 }
 
-function plan(utxos, paymentSats, { numOutputs = 2, numInputs = 3, feeRate = 1, seed = 'octojoin', equalOutputs = false } = {}) {
+function plan(utxos, paymentSats, { numOutputs = 2, numInputs = 3, feeRate = 1, seed = 'octojoin', equalOutputs = false, equalInputs = false } = {}) {
     return planOctojoin({
         utxos,
         paymentSats,
@@ -53,6 +55,7 @@ function plan(utxos, paymentSats, { numOutputs = 2, numInputs = 3, feeRate = 1, 
         changeSpk: P2WPKH,
         rng: new Randomness(Buffer.from(seed)),
         equalOutputs,
+        equalInputs,
     });
 }
 
@@ -203,6 +206,23 @@ test('equal outputs only need every output above dust', () => {
     assert.deepEqual(values(plan(utxos, 2 * (DUST + 1), { equalOutputs: true })), [DUST + 1, DUST + 1]);
 });
 
+test('inputs are near-equal within ten percent', () => {
+    assert.ok(inputsNearEqual([100000, 110000, 105000]));
+    assert.ok(!inputsNearEqual([100000, 110001]));
+});
+
+test('equal inputs come first and reach every swapped coin', () => {
+    const small = [60000, 61000, 62000, 63000, 64000, 65000, 66000].map(v => coin(v, true));
+    const utxos = [...small, coin(130000, true), coin(135000, true), coin(140000, false), coin(90000, false)];
+    for (let seed = 0; seed < 20; seed++) {
+        const p = plan(utxos, 300000, { seed: `s${seed}`, equalInputs: true });
+        assert.deepEqual(p.inputs.map(u => u.valueSats).sort((a, b) => a - b), [130000, 135000, 140000]);
+        assert.deepEqual(p.warnings, []);
+    }
+    const p = plan([coin(120000, true), coin(130000, true), coin(140000, false)], 300000, { equalInputs: true });
+    assert.deepEqual(p.warnings, [UNEQUAL_INPUTS]);
+});
+
 test('change below every input has a payment output below every input too', () => {
     const utxos = [coin(120000, true), coin(130000, true), coin(140000, false)];
     const ranks = new Set();
@@ -281,6 +301,7 @@ test('plans match the shared test vectors', () => {
                 changeSpk: v.changeSpk,
                 rng: new Randomness(Buffer.from(v.seed, 'hex')),
                 equalOutputs: v.equalOutputs,
+                equalInputs: v.equalInputs,
             });
             result = {
                 inputs: p.inputs.map(u => u.vout),
@@ -289,6 +310,7 @@ test('plans match the shared test vectors', () => {
                 feeSats: p.feeSats,
                 uihClean: p.uihClean,
                 changeHidden: p.changeHidden,
+                warnings: p.warnings,
             };
         } catch (e) {
             result = { error: e.code };

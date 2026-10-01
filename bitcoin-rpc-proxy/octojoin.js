@@ -8,13 +8,16 @@ export const MIN_OUTPUTS = 2;
 export const TX_OVERHEAD_VBYTES = 11;
 export const OCTOJOIN_LABEL = 'octojoin';
 export const ROUND_UNIT = 1000;
+export const EQUAL_INPUTS_PERCENT = 10;
 export const SPLIT_ATTEMPTS = 10000;
 export const MAX_SELECTIONS = 200000;
 
+export const UNEQUAL_INPUTS = 'unequalInputs';
 export const UNNECESSARY_INPUT = 'unnecessaryInput';
 export const CHANGE_IDENTIFIABLE = 'changeIdentifiable';
 export const CHANGE_BESIDE_EQUAL_OUTPUTS = 'changeBesideEqualOutputs';
 export const WARNINGS = {
+    [UNEQUAL_INPUTS]: `No choice of coins has inputs within ${EQUAL_INPUTS_PERCENT}% of each other in value.`,
     [UNNECESSARY_INPUT]:
         'No choice of coins avoids an unnecessary input. The change is larger than one of the inputs, ' +
         'which tells an observer that this is not a simple payment.',
@@ -98,6 +101,10 @@ export function estimateFee({ inputScripts, outputScripts, feeRate }) {
 
 export function isRound(valueSats) {
     return valueSats % ROUND_UNIT === 0;
+}
+
+export function inputsNearEqual(values) {
+    return Math.max(...values) * 100 <= Math.min(...values) * (100 + EQUAL_INPUTS_PERCENT);
 }
 
 function divFloor(a, b) {
@@ -191,17 +198,19 @@ function fund(inputs, paymentSats, paymentScripts, changeSpk, feeRate, changeDus
 // while the payment is still funded - the unnecessary input heuristic
 // (https://eprint.iacr.org/2022/589.pdf). No change is best. Otherwise it should
 // lie in the split range, so that it looks like one of the payment outputs,
-// which change next to equal outputs never does. Pick at random among the
-// selections that do best. Returns null when no selection funds the payment.
+// which change next to equal outputs never does. With equal inputs, inputs of
+// near-equal value come before all of that, and every swapped coin is a
+// candidate. Pick at random among the selections that do best. Returns null when
+// no selection funds the payment.
 export function selectInputs({
     swapped, other, numInputs, paymentSats, paymentScripts, changeSpk, feeRate, changeDust, split, rng,
-    equalOutputs = false,
+    equalOutputs = false, equalInputs = false,
 }) {
     const numSwapped = numInputs - 1;
     if (swapped.length < numSwapped || other.length < 1) return null;
     const senders = [...other].sort((a, b) => a.valueSats - b.valueSats);
     let pool = [...swapped].sort((a, b) => a.valueSats - b.valueSats);
-    let extra = 6;
+    let extra = equalInputs ? pool.length - numSwapped : 6;
     while (extra && countCombinations(Math.min(pool.length, numSwapped + extra), numSwapped) * senders.length > MAX_SELECTIONS) {
         extra -= 1;
     }
@@ -216,7 +225,8 @@ export function selectInputs({
             const { changeSats } = selection;
             const unnecessary = changeSats >= selection.minInput;
             const standsOut = changeSats > 0 && (equalOutputs || !(lo <= changeSats && changeSats <= hi));
-            const rank = (unnecessary ? 4 : 0) + (standsOut ? 2 : 0) + (changeSats > 0 ? 1 : 0);
+            const unequal = equalInputs && !inputsNearEqual(selection.inputs.map(u => u.valueSats));
+            const rank = (unequal ? 8 : 0) + (unnecessary ? 4 : 0) + (standsOut ? 2 : 0) + (changeSats > 0 ? 1 : 0);
             if (bestRank === null || rank < bestRank) {
                 bestRank = rank;
                 best = [selection];
@@ -237,6 +247,7 @@ export class OctojoinError extends Error {
 
 export function planOctojoin({
     utxos, paymentSats, outputs, numInputs, numOutputs, feeRate, changeSpk, rng = new Randomness(), equalOutputs = false,
+    equalInputs = false,
 }) {
     if (numInputs < MIN_INPUTS) {
         throw new OctojoinError('inputsTooLow', `Number of inputs must be at least ${MIN_INPUTS}`);
@@ -287,6 +298,7 @@ export function planOctojoin({
         split,
         rng,
         equalOutputs,
+        equalInputs,
     });
     if (!selection) {
         throw new OctojoinError(
@@ -315,6 +327,7 @@ export function planOctojoin({
     }
 
     const uihClean = changeSats < minInput;
+    const inputsEqual = !equalInputs || inputsNearEqual(selection.inputs.map(u => u.valueSats));
     return {
         inputs: selection.inputs,
         paymentTargets: outputs.map((output, i) => ({ address: output.address, spk: output.spk, valueSats: values[i] })),
@@ -324,7 +337,9 @@ export function planOctojoin({
         uihClean,
         changeHidden,
         equalOutputs,
+        equalInputs,
         warnings: [
+            ...(inputsEqual ? [] : [UNEQUAL_INPUTS]),
             ...(uihClean ? [] : [UNNECESSARY_INPUT]),
             ...(changeHidden ? [] : [equalOutputs ? CHANGE_BESIDE_EQUAL_OUTPUTS : CHANGE_IDENTIFIABLE]),
         ],
