@@ -9,6 +9,7 @@ import {
     MIN_OUTPUTS,
     OCTOJOIN_LABEL,
     OctojoinError,
+    WARNINGS,
     isOctojoinLabel,
     planOctojoin,
     scriptType,
@@ -289,6 +290,7 @@ app.post('/create-psbt', async (req, res) => {
         numInputs = MIN_INPUTS,
         numOutputs = MIN_OUTPUTS,
         feeRate = 1.0,
+        equalOutputs = false,
     } = req.body;
 
     try {
@@ -339,6 +341,7 @@ app.post('/create-psbt', async (req, res) => {
             numOutputs,
             feeRate,
             changeSpk: changeInfo.scriptPubKey,
+            equalOutputs: equalOutputs === true,
         });
 
         const rpcInputs = shuffle(plan.inputs).map(u => ({ txid: u.txid, vout: u.vout }));
@@ -361,7 +364,6 @@ app.post('/create-psbt', async (req, res) => {
                 isSwapped: u.isSwapped,
             })),
             paymentOutputs: plan.paymentTargets.map(t => ({ address: t.address, valueSats: t.valueSats })),
-            denominations: plan.denominations,
             changeAddress: plan.changeSats > 0 ? changeAddress : null,
             changeSats: plan.changeSats,
             feeSats: plan.feeSats,
@@ -369,6 +371,9 @@ app.post('/create-psbt', async (req, res) => {
             totalInputSats: plan.totalInputSats,
             paymentSats,
             uihClean: plan.uihClean,
+            changeHidden: plan.changeHidden,
+            equalOutputs: plan.equalOutputs,
+            warnings: plan.warnings.map(code => WARNINGS[code]),
             locktime: height,
         };
 

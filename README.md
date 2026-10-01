@@ -1,8 +1,8 @@
 ### octojoin
 
 Reference implementation of [Octojoin](https://github.com/octojoin/bip): a payment that spends
-swapped coins alongside one of your own, splits the amount into standard denominations across
-several outputs, and avoids the unnecessary input heuristic.
+swapped coins alongside one of your own, splits the amount at random into values that are not
+round across several outputs, and keeps the change from standing out.
 
 It drives a Bitcoin Core wallet over RPC and serves a small web UI.
 
@@ -43,6 +43,14 @@ RPC settings can also be entered in the UI. They are stored server side in
    output.
 3. Create the PSBT. Sign it with the node's wallet, or copy or download it, sign it in an external
    signer and paste the signed PSBT back to broadcast.
+
+The preview warns when no choice of coins avoids an unnecessary input, or when the change cannot
+be made to look like one of the payment outputs. Coins that leave no change are preferred. Coins of
+a little less than half the amount each work best with the defaults of 3 inputs and 2 outputs.
+
+Equal amounts in outputs splits the payment into outputs of equal value instead of random ones.
+Equal outputs keep the change hidden only when there is no change, so the preview warns when there
+is change.
 
 A draft survives a restart, so the PSBT is still there after the server or container is restarted.
 

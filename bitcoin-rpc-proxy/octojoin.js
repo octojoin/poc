@@ -1,14 +1,51 @@
 // Octojoin transaction construction. Pure functions, satoshis only: BTC decimals
 // are used at the RPC boundary in server.js and nowhere else.
 
-export const STANDARD_DENOMINATIONS = [
-    100000000, 50000000, 20000000, 10000000, 5000000, 2000000, 1000000, 500000, 200000, 100000,
-];
+import { createHash, randomBytes } from 'node:crypto';
 
 export const MIN_INPUTS = 3;
 export const MIN_OUTPUTS = 2;
 export const TX_OVERHEAD_VBYTES = 11;
 export const OCTOJOIN_LABEL = 'octojoin';
+export const ROUND_UNIT = 1000;
+export const SPLIT_ATTEMPTS = 10000;
+export const MAX_SELECTIONS = 200000;
+
+export const UNNECESSARY_INPUT = 'unnecessaryInput';
+export const CHANGE_IDENTIFIABLE = 'changeIdentifiable';
+export const CHANGE_BESIDE_EQUAL_OUTPUTS = 'changeBesideEqualOutputs';
+export const WARNINGS = {
+    [UNNECESSARY_INPUT]:
+        'No choice of coins avoids an unnecessary input. The change is larger than one of the inputs, ' +
+        'which tells an observer that this is not a simple payment.',
+    [CHANGE_IDENTIFIABLE]:
+        'No choice of coins gives change that blends in with the payment outputs, ' +
+        'so an observer could tell the change apart.',
+    [CHANGE_BESIDE_EQUAL_OUTPUTS]:
+        'No choice of coins avoids change. Next to payment outputs of equal value, ' +
+        'the change is the one output with a different value.',
+};
+
+// Uniform integers from SHA-256 of a secret seed and a counter. A seed gives
+// the same plan here and in the Electrum plugin, which tests use to compare them.
+export class Randomness {
+    constructor(seed = randomBytes(32)) {
+        this.seed = Buffer.from(seed);
+        this.counter = 0n;
+    }
+
+    below(n) {
+        const range = BigInt(n);
+        const limit = (1n << 64n) - ((1n << 64n) % range);
+        for (;;) {
+            this.counter += 1n;
+            const counter = Buffer.alloc(8);
+            counter.writeBigUInt64BE(this.counter);
+            const value = createHash('sha256').update(this.seed).update(counter).digest().readBigUInt64BE(0);
+            if (value < limit) return Number(value % range);
+        }
+    }
+}
 
 export function isOctojoinLabel(label) {
     return typeof label === 'string' && label.toLowerCase().includes(OCTOJOIN_LABEL);
@@ -59,76 +96,57 @@ export function estimateFee({ inputScripts, outputScripts, feeRate }) {
     return Math.ceil(vsize * feeRate);
 }
 
-export function decomposeAmount(amountSats, dust) {
-    const denominations = [];
-    let remaining = amountSats;
-
-    for (const denom of STANDARD_DENOMINATIONS) {
-        while (remaining >= denom) {
-            denominations.push(denom);
-            remaining -= denom;
-        }
-    }
-
-    if (remaining > dust) {
-        denominations.push(remaining);
-    } else if (remaining > 0 && denominations.length > 0) {
-        denominations[denominations.length - 1] += remaining;
-    }
-
-    return denominations;
+export function isRound(valueSats) {
+    return valueSats % ROUND_UNIT === 0;
 }
 
-// A payment like 0.002 BTC decomposes to a single standard denomination and
-// cannot fill the requested outputs on its own. Split the largest value into
-// smaller standard denominations until there are enough, which keeps the sum and
-// the standard denominations intact.
-const DENOMINATION_SPLITS = new Map([
-    [100000000, [50000000, 50000000]],
-    [50000000, [20000000, 20000000, 10000000]],
-    [20000000, [10000000, 10000000]],
-    [10000000, [5000000, 5000000]],
-    [5000000, [2000000, 2000000, 1000000]],
-    [2000000, [1000000, 1000000]],
-    [1000000, [500000, 500000]],
-    [500000, [200000, 200000, 100000]],
-    [200000, [100000, 100000]],
-]);
+function divFloor(a, b) {
+    return (a - (a % b)) / b;
+}
 
-function splitValue(value, dust) {
-    const standard = DENOMINATION_SPLITS.get(value);
-    if (standard) return standard;
-    const half = Math.floor(value / 2);
-    const rest = value - half;
-    if (half > dust) return [rest, half];
+// The smallest and largest value of a payment output: above dust, and between
+// half and one and a half times an even share of the payment.
+export function splitRange(paymentSats, numOutputs, dust) {
+    const share = 2 * numOutputs;
+    const lo = divFloor(paymentSats, share) + (paymentSats % share ? 1 : 0);
+    return [Math.max(dust + 1, lo), divFloor(3 * paymentSats, share)];
+}
+
+export function smallestSplittable(numOutputs, dust, equalOutputs = false) {
+    if (equalOutputs) return numOutputs * (dust + 1);
+    return numOutputs * (dust + 1) + (numOutputs * (numOutputs - 1)) / 2;
+}
+
+export function equalSplit(paymentSats, numOutputs) {
+    const share = divFloor(paymentSats, numOutputs);
+    const rest = paymentSats % numOutputs;
+    return Array.from({ length: numOutputs }, (_, i) => (i < rest ? share + 1 : share));
+}
+
+// Cut the payment at random points into values in the split range that are all
+// different, not round and not equal to the change. With below, at least one of
+// them is smaller than it. Returns null if no attempt gives such values.
+export function splitAmount(paymentSats, numOutputs, dust, rng, { changeSats = 0, below = null } = {}) {
+    const [lo, hi] = splitRange(paymentSats, numOutputs, dust);
+    const spread = paymentSats - numOutputs * lo;
+    if (spread < 0) return null;
+    for (let attempt = 0; attempt < SPLIT_ATTEMPTS; attempt++) {
+        const draws = [];
+        for (let i = 0; i < numOutputs - 1; i++) draws.push(rng.below(spread + 1));
+        const cuts = draws.sort((a, b) => a - b);
+        const lower = [0, ...cuts];
+        const values = [...cuts, spread].map((upper, i) => lo + upper - lower[i]);
+        if (
+            Math.max(...values) <= hi &&
+            new Set(values).size === numOutputs &&
+            !values.includes(changeSats) &&
+            !values.some(isRound) &&
+            (below === null || Math.min(...values) < below)
+        ) {
+            return values;
+        }
+    }
     return null;
-}
-
-export function splitToFill(denominations, numOutputs, dust) {
-    const values = [...denominations];
-    while (values.length < numOutputs) {
-        let index = -1;
-        let split = null;
-        for (let i = 0; i < values.length; i++) {
-            if (index >= 0 && values[i] <= values[index]) continue;
-            const candidate = splitValue(values[i], dust);
-            if (candidate) {
-                index = i;
-                split = candidate;
-            }
-        }
-        if (index < 0) return values;
-        values.splice(index, 1, ...split);
-    }
-    return values;
-}
-
-export function bucketValues(values, numBuckets) {
-    const buckets = new Array(numBuckets).fill(0);
-    values.forEach((value, i) => {
-        buckets[i % numBuckets] += value;
-    });
-    return buckets;
 }
 
 export function chooseCombinations(items, k) {
@@ -143,34 +161,71 @@ export function chooseCombinations(items, k) {
     return result;
 }
 
-// Select (numInputs - 1) swapped coins plus exactly one sender coin so that the
-// change is smaller than the smallest input. Otherwise an input could be dropped
-// while the payment is still funded - the unnecessary input heuristic - which
-// fingerprints the transaction (https://eprint.iacr.org/2022/589.pdf). Prefer a
-// clean selection, then the smallest change. Returns null when no funding
-// selection exists.
-export function selectUTXOs(swappedUTXOs, otherUTXOs, numInputs, targetSats) {
+function countCombinations(n, k) {
+    let count = 1;
+    for (let i = 1; i <= k; i++) count = (count * (n - k + i)) / i;
+    return count;
+}
+
+function fund(inputs, paymentSats, paymentScripts, changeSpk, feeRate, changeDust) {
+    const total = inputs.reduce((sum, u) => sum + u.valueSats, 0);
+    const inputScripts = inputs.map(u => u.spk);
+    let feeSats = estimateFee({ inputScripts, outputScripts: [...paymentScripts, changeSpk], feeRate });
+    let changeSats = total - paymentSats - feeSats;
+    if (changeSats > changeDust && isRound(changeSats)) {
+        changeSats -= 1;
+        feeSats += 1;
+    }
+    if (changeSats <= changeDust) {
+        // no viable change output: the remainder becomes fee, which also removes
+        // the change output an observer could identify
+        changeSats = 0;
+        feeSats = total - paymentSats;
+        if (feeSats < estimateFee({ inputScripts, outputScripts: paymentScripts, feeRate })) return null;
+    }
+    return { inputs, total, changeSats, feeSats, minInput: Math.min(...inputs.map(u => u.valueSats)) };
+}
+
+// Select (numInputs - 1) swapped coins plus exactly one sender coin. The change
+// should be smaller than the smallest input, otherwise an input could be dropped
+// while the payment is still funded - the unnecessary input heuristic
+// (https://eprint.iacr.org/2022/589.pdf). No change is best. Otherwise it should
+// lie in the split range, so that it looks like one of the payment outputs,
+// which change next to equal outputs never does. Pick at random among the
+// selections that do best. Returns null when no selection funds the payment.
+export function selectInputs({
+    swapped, other, numInputs, paymentSats, paymentScripts, changeSpk, feeRate, changeDust, split, rng,
+    equalOutputs = false,
+}) {
     const numSwapped = numInputs - 1;
-    if (swappedUTXOs.length < numSwapped || otherUTXOs.length < 1) return null;
-
-    const swappedPool = [...swappedUTXOs].sort((a, b) => a.valueSats - b.valueSats).slice(0, numSwapped + 6);
-    const senders = [...otherUTXOs].sort((a, b) => a.valueSats - b.valueSats).slice(0, 10);
-
-    let best = null;
-    for (const combo of chooseCombinations(swappedPool, numSwapped)) {
-        const swappedValue = combo.reduce((sum, u) => sum + u.valueSats, 0);
+    if (swapped.length < numSwapped || other.length < 1) return null;
+    const senders = [...other].sort((a, b) => a.valueSats - b.valueSats);
+    let pool = [...swapped].sort((a, b) => a.valueSats - b.valueSats);
+    let extra = 6;
+    while (extra && countCombinations(Math.min(pool.length, numSwapped + extra), numSwapped) * senders.length > MAX_SELECTIONS) {
+        extra -= 1;
+    }
+    pool = pool.slice(0, numSwapped + extra);
+    const [lo, hi] = split;
+    let bestRank = null;
+    let best = [];
+    for (const combo of chooseCombinations(pool, numSwapped)) {
         for (const sender of senders) {
-            const total = swappedValue + sender.valueSats;
-            if (total < targetSats) continue;
-            const change = total - targetSats;
-            const minInput = Math.min(sender.valueSats, ...combo.map(u => u.valueSats));
-            const clean = change < minInput;
-            if (!best || (clean && !best.clean) || (clean === best.clean && change < best.change)) {
-                best = { swapped: combo, other: sender, total, change, clean };
+            const selection = fund([...combo, sender], paymentSats, paymentScripts, changeSpk, feeRate, changeDust);
+            if (!selection) continue;
+            const { changeSats } = selection;
+            const unnecessary = changeSats >= selection.minInput;
+            const standsOut = changeSats > 0 && (equalOutputs || !(lo <= changeSats && changeSats <= hi));
+            const rank = (unnecessary ? 4 : 0) + (standsOut ? 2 : 0) + (changeSats > 0 ? 1 : 0);
+            if (bestRank === null || rank < bestRank) {
+                bestRank = rank;
+                best = [selection];
+            } else if (rank === bestRank) {
+                best.push(selection);
             }
         }
     }
-    return best;
+    return best.length ? best[rng.below(best.length)] : null;
 }
 
 export class OctojoinError extends Error {
@@ -180,7 +235,9 @@ export class OctojoinError extends Error {
     }
 }
 
-export function planOctojoin({ utxos, paymentSats, outputs, numInputs, numOutputs, feeRate, changeSpk }) {
+export function planOctojoin({
+    utxos, paymentSats, outputs, numInputs, numOutputs, feeRate, changeSpk, rng = new Randomness(), equalOutputs = false,
+}) {
     if (numInputs < MIN_INPUTS) {
         throw new OctojoinError('inputsTooLow', `Number of inputs must be at least ${MIN_INPUTS}`);
     }
@@ -195,27 +252,15 @@ export function planOctojoin({ utxos, paymentSats, outputs, numInputs, numOutput
     }
 
     const dust = Math.max(...outputs.map(o => dustThreshold(o.spk)));
-    const denominations = decomposeAmount(paymentSats, dust);
-    if (denominations.length === 0) {
+    if (paymentSats <= dust) {
         throw new OctojoinError('amountBelowDust', `Payment of ${paymentSats} sat is below the dust threshold of ${dust} sat`);
     }
-    const filled = splitToFill(denominations, numOutputs, dust);
-    if (filled.length < numOutputs) {
-        throw new OctojoinError(
-            'tooFewDenominations',
-            `${paymentSats} sat cannot be split into ${numOutputs} outputs above the dust threshold. Lower the number of outputs or raise the amount.`,
-        );
-    }
+    const tooSmall = () => new OctojoinError(
+        'outputBelowDust',
+        `${paymentSats} sat cannot be split into ${numOutputs} ${equalOutputs ? 'equal' : 'different'} outputs above the dust threshold of ${dust} sat. Lower the number of outputs or raise the amount.`,
+    );
+    if (paymentSats < smallestSplittable(numOutputs, dust, equalOutputs)) throw tooSmall();
 
-    const buckets = bucketValues(filled, numOutputs);
-    const paymentTargets = outputs.map((output, i) => ({ address: output.address, spk: output.spk, valueSats: buckets[i] }));
-    for (const target of paymentTargets) {
-        if (target.valueSats <= dustThreshold(target.spk)) {
-            throw new OctojoinError('outputBelowDust', `Output of ${target.valueSats} sat to ${target.address} is dust`);
-        }
-    }
-
-    const paymentScripts = paymentTargets.map(t => t.spk);
     const swapped = utxos.filter(u => u.isSwapped);
     const other = utxos.filter(u => !u.isSwapped);
     const requiredSwapped = numInputs - 1;
@@ -229,14 +274,20 @@ export function planOctojoin({ utxos, paymentSats, outputs, numInputs, numOutput
         throw new OctojoinError('noSenderCoin', 'Need at least 1 coin that is not labeled octojoin');
     }
 
-    const worstInputSpk = [...utxos].sort((a, b) => inputVbytes(b.spk) - inputVbytes(a.spk))[0].spk;
-    const roughFee = estimateFee({
-        inputScripts: new Array(numInputs).fill(worstInputSpk),
-        outputScripts: [...paymentScripts, changeSpk],
+    const split = splitRange(paymentSats, numOutputs, dust);
+    const selection = selectInputs({
+        swapped,
+        other,
+        numInputs,
+        paymentSats,
+        paymentScripts: outputs.map(o => o.spk),
+        changeSpk,
         feeRate,
+        changeDust: dustThreshold(changeSpk),
+        split,
+        rng,
+        equalOutputs,
     });
-
-    const selection = selectUTXOs(swapped, other, numInputs, paymentSats + roughFee);
     if (!selection) {
         throw new OctojoinError(
             'insufficientFunds',
@@ -244,37 +295,38 @@ export function planOctojoin({ utxos, paymentSats, outputs, numInputs, numOutput
         );
     }
 
-    const inputs = [...selection.swapped, selection.other];
-    const inputScripts = inputs.map(u => u.spk);
-    const totalInputSats = selection.total;
-
-    const feeWithChange = estimateFee({ inputScripts, outputScripts: [...paymentScripts, changeSpk], feeRate });
-    const feeWithoutChange = estimateFee({ inputScripts, outputScripts: paymentScripts, feeRate });
-
-    let changeSats = totalInputSats - paymentSats - feeWithChange;
-    let feeSats = feeWithChange;
-
-    if (changeSats <= dustThreshold(changeSpk)) {
-        // no viable change output: the remainder becomes fee, which also removes
-        // the change output an observer could identify
-        feeSats = totalInputSats - paymentSats;
-        changeSats = 0;
-        if (feeSats < feeWithoutChange) {
-            throw new OctojoinError(
-                'insufficientFunds',
-                'Selected coins cannot cover the payment and fee. Use larger coins or lower the fee rate.',
-            );
-        }
+    const { changeSats, minInput } = selection;
+    const [lo, hi] = split;
+    let values;
+    let changeHidden;
+    if (equalOutputs) {
+        values = equalSplit(paymentSats, numOutputs);
+        changeHidden = changeSats === 0;
+    } else {
+        // with change below every input, a payment output below every input as well
+        // keeps the change from being the only output the heuristic points to
+        const below = changeSats && changeSats < minInput && minInput > lo ? minInput : null;
+        values = splitAmount(paymentSats, numOutputs, dust, rng, { changeSats, below });
+        if (!values && below !== null) values = splitAmount(paymentSats, numOutputs, dust, rng, { changeSats });
+        if (!values) throw tooSmall();
+        changeHidden =
+            changeSats === 0 ||
+            (lo <= changeSats && changeSats <= hi && (changeSats >= minInput || Math.min(...values) < minInput));
     }
 
-    const minInput = Math.min(...inputs.map(u => u.valueSats));
+    const uihClean = changeSats < minInput;
     return {
-        inputs,
-        paymentTargets,
-        denominations: filled,
+        inputs: selection.inputs,
+        paymentTargets: outputs.map((output, i) => ({ address: output.address, spk: output.spk, valueSats: values[i] })),
         changeSats,
-        feeSats,
-        totalInputSats,
-        uihClean: changeSats === 0 || changeSats < minInput,
+        feeSats: selection.feeSats,
+        totalInputSats: selection.total,
+        uihClean,
+        changeHidden,
+        equalOutputs,
+        warnings: [
+            ...(uihClean ? [] : [UNNECESSARY_INPUT]),
+            ...(changeHidden ? [] : [equalOutputs ? CHANGE_BESIDE_EQUAL_OUTPUTS : CHANGE_IDENTIFIABLE]),
+        ],
     };
 }
