@@ -376,17 +376,6 @@
             background: #e74c3c;
         }
 
-        .denomination-tag {
-            display: inline-block;
-            background: rgba(0, 212, 170, 0.2);
-            border: 1px solid #00d4aa;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            margin: 2px;
-            font-family: monospace;
-        }
-
         .status-grid {
             display: flex;
             flex-wrap: wrap;
@@ -858,10 +847,6 @@
                 `;
             }
 
-            const denomsHtml = details.denominations.map(d =>
-                `<span class="denomination-tag">${btc(d)} BTC</span>`
-            ).join('');
-
             preview.innerHTML = `
                 <div class="preview-section">
                     <h3>Inputs</h3>
@@ -878,17 +863,13 @@
                 </div>
 
                 <div class="preview-section">
-                    <h3>Denomination Breakdown</h3>
-                    <div>${denomsHtml}</div>
-                </div>
-
-                <div class="preview-section">
                     <div class="preview-row"><span class="preview-label">Payment</span><span class="preview-value">${btc(details.paymentSats)} BTC</span></div>
                     <div class="preview-row"><span class="preview-label">Fee</span><span class="preview-value">${details.feeSats} sat at ${details.feeRate} sat/vB</span></div>
                     <div class="preview-row"><span class="preview-label">Locktime</span><span class="preview-value">${details.locktime}</span></div>
                     <div class="preview-row"><span class="preview-label">Unnecessary input heuristic</span><span class="preview-value">${details.uihClean ? 'clean' : 'not clean'}</span></div>
+                    <div class="preview-row"><span class="preview-label">Change</span><span class="preview-value">${details.changeHidden ? 'blends in' : 'stands out'}</span></div>
                 </div>
-                ${details.uihClean ? '' : '<div class="warn">The change is larger than the smallest input, so an input looks unnecessary. Use smaller swapped coins or a different amount.</div>'}
+                ${(details.warnings || []).map(w => `<div class="warn">${escapeHtml(w)}</div>`).join('')}
             `;
         }
 
